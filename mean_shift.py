@@ -1,8 +1,10 @@
 from math import sqrt
 from scipy import misc
 from cluster import Cluster
+import random_color as rc
 import numpy as np
 import matplotlib.pyplot as plt
+import sys
 
 DIFF_THRESH = 2
 ITER_THRESH = 100
@@ -142,8 +144,18 @@ class MeanShift:
 
 		print 'number of clusters: ' + str(len(clusters))
 
+		colors = []
+
 		for c in clusters:
-			color = [np.random.randint(0, 256), np.random.randint(0, 256), np.random.randint(0, 256)]
+			color = rc.generate_new_color(colors)
+			colors.append(color)
+
+			for i in range(3):
+				color[i] = int(color[i] * 255)
+
+			if self.dim == 4:
+				color.append(255)
+
 			for point in c.points:
 				self.result[point[0], point[1]] = color
 
@@ -170,24 +182,37 @@ class MeanShift:
 	# 	return
 
 
-	# relaxed clustering - fast but maybe inaccurate
+	# relaxed clustering 
 	
-	def belong_to_cluster(self, c, point, mode):
-		rgb = mode[2:]
-		c_mean = c.mean()
-		c_rgb = c_mean[2:]
-		if self.diff(c_rgb, rgb) > self.hr:
-			return False
-		return True
+	def rgb_difference_to_cluster(self, c, mode):
+		return self.diff(c.mean()[2:], mode[2:])
+
+	def distance_to_cluster(self, c, mode):
+		return self.diff(c.mean(), mode)
 
 	def add_to_clusters(self, clusters, point):
 		mode = self.modes[point]
+		choice_1 = None # closest cluster in terms of (x, y, r, g, b)
+		choice_2 = None # closest cluster in terms of (r, g, b)
+		distance = sys.maxint
+		rgb_distance = sys.maxint
 		for c in clusters:
-			if self.belong_to_cluster(c, point, mode):
-				c.add(point, mode)
-				return
-		clusters.append(Cluster(point, mode))
-		return
+			d = self.distance_to_cluster(c, mode)
+			rgb_d = self.rgb_difference_to_cluster(c, mode)
+			if d < distance:
+				distance = d
+				choice_1 = c
+			if rgb_d < rgb_distance:
+				rgb_distance = rgb_d
+				choice_2 = c
+		
+		# only consider rgb difference when determine whether to add to the cluster
+		if choice_1 != None and self.rgb_difference_to_cluster(choice_1, mode) < self.hr:
+			choice_1.add(point, mode)
+		elif choice_2 != None and rgb_distance < self.hr:
+			choice_2.add(point, mode)
+		else:
+			clusters.append(Cluster(point, mode))
 
 
 	def save(self):
@@ -203,7 +228,8 @@ class MeanShift:
 		a.set_title('Segmented')
 		plt.show()
 
-m = MeanShift('test4.jpg', hs = 8, hr = 30)
+
+m = MeanShift('test4.jpg', hs = 7, hr = 40)
 m.run()
 m.save()
 m.show()
