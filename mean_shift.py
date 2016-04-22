@@ -5,6 +5,7 @@ import random_color as rc
 import numpy as np
 import matplotlib.pyplot as plt
 import sys
+import random
 
 DIFF_THRESH = 2
 ITER_THRESH = 100
@@ -16,6 +17,7 @@ class MeanShift:
 	
 	def __init__(self, image_name, hs, hr):
 		self.image = misc.imread(image_name)
+		self.shifted = misc.imread(image_name)
 		self.result = misc.imread(image_name)
 		self.modes = dict()
 		self.dim = self.image.shape[2] + 2 # this is the dimension of the feature space, typically 5 with (x, y, r, g, b)
@@ -132,6 +134,10 @@ class MeanShift:
 			for j in range(self.image.shape[1]):
 				mode = self.shift(i, j)
 				self.modes[(i, j)] = mode
+				self.shifted[i,j] = mode[2:]
+
+
+		misc.imsave('shifted.png', self.shifted)
 
 		print 'Begin clustering.'
 
@@ -144,20 +150,21 @@ class MeanShift:
 
 		print 'number of clusters: ' + str(len(clusters))
 
-		colors = []
 
-		for c in clusters:
-			color = rc.generate_new_color(colors)
-			colors.append(color)
+		for index in range(len(clusters)):
+			c = clusters[index]
+			color = []
 
-			for i in range(3):
-				color[i] = int(color[i] * 255)
+			for _ in range(3):
+				color.append(random.randint(0, 255))
 
-			if self.dim == 4:
-				color.append(255)
+			if self.dim - 2 == 4:
+				color.append(180)
 
 			for point in c.points:
-				self.result[point[0], point[1]] = color
+				self.result[point[0], point[1]] = np.asarray(color)
+
+
 
 
 	# exact clustering - slow
@@ -216,7 +223,7 @@ class MeanShift:
 
 
 	def save(self):
-		misc.imsave('result.png', self.result)
+		misc.imsave('huge_hr_80.png', self.result)
 
 	def show(self):
 		fig = plt.figure()
@@ -229,7 +236,7 @@ class MeanShift:
 		plt.show()
 
 
-m = MeanShift('test4.jpg', hs = 7, hr = 40)
+m = MeanShift('test.png', hs = 10, hr = 80)
 m.run()
 m.save()
-m.show()
+#m.show()
