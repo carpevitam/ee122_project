@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<!-- saved from url=(0039)http://getbootstrap.com/examples/theme/ -->
+<html lang="en" class=""><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+<!-- Modified / Added by me -->
+<!--<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>-->
+    <meta name="description" content="EE122 Project">
+    <meta name="author" content="Andy Li">
+    <!-- <link rel="icon" href="http://getbootstrap.com/favicon.ico"> -->
+    <title>EE122 Project: Distributed Computing for Image Processing Algorithms </title>
+
+    <script src="https://sdk.amazonaws.com/js/aws-sdk-2.3.3.min.js"></script>
+<!--<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>-->
+<!--<><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><><>-->
+
+    <!-- Bootstrap core CSS -->
+    <link href="assets/default/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap theme -->
+    <link href="assets/default/bootstrap-theme.min.css" rel="stylesheet">
+    <!-- IE10 viewport hack for Surface/desktop Windows 8 bug -->
+    <link href="assets/default/ie10-viewport-bug-workaround.css" rel="stylesheet">
+    <!-- Custom styles for this template -->
+    <link href="assets/default/theme.css" rel="stylesheet">
+    <!-- Just for debugging purposes. Don't actually copy these 2 lines! -->
+    <!--[if lt IE 9]><script src="../../assets/js/ie8-responsive-file-warning.js"></script><![endif]-->
+    <script src="assets/default/ie-emulation-modes-warning.js"></script><style type="text/css"></style>
+    <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
+    <!--[if lt IE 9]>
+      <script src="https://oss.maxcdn.com/html5shiv/3.7.2/html5shiv.min.js"></script>
+      <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
+    <![endif]-->
+  <style id="style-1-cropbar-clipper">/* Copyright 2014 Evernote Corporation. All rights reserved. */
+.en-markup-crop-options {
+    top: 18px !important;
+    left: 50% !important;
+    margin-left: -100px !important;
+    width: 200px !important;
+    border: 2px rgba(255,255,255,.38) solid !important;
+    border-radius: 4px !important;
+}
+.en-markup-crop-options div div:first-of-type {
+    margin-left: 0px !important;
+}
+</style><style type="text/css">.fancybox-margin{margin-right:0px;}</style></head>
+<body role="document" data-gclp-initialized="true" data-gistbox-initialized="true">
+
+    <div class="container theme-showcase" role="main">
+
+      <!-- Main jumbotron for a primary marketing message or call to action -->
+      <div class="jumbotron">
+        <h2>Distributed Computing for Image Processing Algorithms</h1>
+        <p> EE 122 Spring 2016, Professor Shyam Parekh </p>
+        <p>Yulun Tian, Andy Li</p>
+      </div>
+
+
+      <div class='page-header'>
+        <h1> Upload Job </h1>
+      </div>
+
+      <p>
+      <input type="file" id="file-chooser" /> 
+        <button type="button" id="upload-button" class="btn btn-lg btn-primary">Upload to S3</button>
+        <div id="results"></div>
+      </p>
+<script type="text/javascript">
+  var bucket = new AWS.S3({params: {Bucket: '122proj'}});
+
+  var fileChooser = document.getElementById('file-chooser');
+  var button = document.getElementById('upload-button');
+  var results = document.getElementById('results');
+  var alertPos = document.getElementById('success');
+  var alertNeg = document.getElementById('failure');
+  button.addEventListener('click', function() {
+    var file = fileChooser.files[0];
+    if (file) {
+      results.innerHTML = '';
+
+      var params = {Key: file.name, ContentType: file.type, Body: file};
+      bucket.upload(params, function (err, data) {
+        results.innerHTML = err ? 'ERROR!' : 'UPLOADED.';
+        if (err) {
+            alertPos.style.visibility = 'hidden'
+            alertNeg.style.visibility = 'visible'
+        }
+        else {
+            alertPos.style.visibility = 'visible'
+            alertNeg.style.visibility = 'hidden'
+        }
+      });
+    } else {
+      results.innerHTML = 'Nothing to upload.';
+      alertPos.style.visibility = 'hidden'
+      alertNeg.style.visibility = 'visible'
+    }
+  }, false);
+</script>
+
+
+      <div class="page-header">
+        <h1>In-Progress <span class="badge">10</span></h1>
+      </div>
+          Shifting
+      <div class="progress">
+        <div id ='bar1' class="progress-bar" role="progressbar" aria-valuenow="60" aria-valuemin="0" aria-valuemax="100" style="width: 0%;"><span class="sr-only">60% Complete</span></div>
+      </div>
+      Clustering
+      <div class="progress">
+        <div id = 'bar2' class="progress-bar progress-bar-success" role="progressbar" aria-valuenow="40" aria-valuemin="0" aria-valuemax="100" style="width: 0%"><span class="sr-only">40% Complete (success)</span></div>
+      </div>
+
+<div>
+<div id="status"></div>
+<ul id="objects"></ul>
+</div>
+
+<br />
+
+<div>
+<div id="sqs">SQS</div>
+<ul id="messages"></ul>
+</div>
+
+
+    </div> <!-- /container -->
+<script type="text/javascript">
+var REFRESH_TIME = 10000
+var bucket = new AWS.S3({params: {Bucket: '122proj'}});
+var sqs = new AWS.SQS();
+
+var jobProgress = {}
+
+function loadBucket(){
+    ///////////
+  bucket.listObjects(function (err, data) {
+    if (err) {
+      document.getElementById('status').innerHTML =
+        'Could not load objects from S3';
+    } else {
+      document.getElementById('status').innerHTML =
+        'Loaded ' + data.Contents.length + ' items from S3';
+        document.getElementById('objects').innerHTML = ""
+      for (var i = 0; i < data.Contents.length; i++) {
+        document.getElementById('objects').innerHTML +=
+          '<li>' + data.Contents[i].Key + '</li>';
+      }
+    }
+  });
+  //////////
+  setTimeout(loadBucket, REFRESH_TIME)
+}
+
+
+function loadMessages(){
+    ///////////
+var params = {
+  QueueUrl: '', /* required */
+  AttributeNames: [
+  'CreatedTimestamp | ApproximateNumberOfMessages'
+    // 'Policy | VisibilityTimeout | MaximumMessageSize | MessageRetentionPeriod | ApproximateNumberOfMessages | ApproximateNumberOfMessagesNotVisible | CreatedTimestamp | LastModifiedTimestamp | QueueArn | ApproximateNumberOfMessagesDelayed | DelaySeconds | ReceiveMessageWaitTimeSeconds | RedrivePolicy',
+    /* more items */
+  ],
+  MaxNumberOfMessages: 10,
+  MessageAttributeNames: [
+    'STRING_VALUE',
+    /* more items */
+  ],
+  VisibilityTimeout: 0,
+  WaitTimeSeconds: 0
+};
+
+sqs.receiveMessage(params, function(err, data) {
+  if (err) console.log(err, err.stack); // an error occurred
+  else {
+    for (var i=0; i < data['Messages'].length; i++) {
+        messageData = data['Messages'][i]['Body'];
+        x = messageData.split('_');
+        if (!(x[0] in jobProgress)){
+          jobProgress[x[0]] = new Set()
+        }
+        if (!(parseInt(x[1]) in jobProgress[x[0]])){
+          jobProgress[x[0]].add(parseInt(x[1]))
+          // bar1.style.width = jobProgress[x[0]].size/1.05 + "%";
+        }
+        if (x[0] == 'shift') {
+          bar1.style.width = jobProgress[x[0]].size/2.50 + "%"
+        }
+        // else if (x[0] == 'cluster') {
+        //   bar2.style.width = jobProgress[x[0]].size/.25 + "%"
+        // }
+        else {
+          document.getElementById('messages').innerHTML += '<li>' + messageData + '</li>'
+        }
+          var delParams = {
+            QueueUrl: '', /* required */
+            ReceiptHandle: data['Messages'][i]['ReceiptHandle'] /* required */
+          };
+          sqs.deleteMessage(delParams, function(err, data) {
+            if (err) console.log(err, err.stack); // an error occurred
+            // else     console.log(data);console.log("del");           // successful response
+          });
+    }
+  }     
+
+});
+    //////////
+    setTimeout(loadMessages, 1000)
+}
+loadBucket()
+loadMessages()
+</script>
+
+    <!-- Bootstrap core JavaScript
+    ================================================== -->
+    <!-- Placed at the end of the document so the pages load faster -->
+    <script src="assets/default/jquery.min.js"></script>
+    <script>window.jQuery || document.write('<script src="../../assets/js/vendor/jquery.min.js"><\/script>')</script>
+    <script src="assets/default/bootstrap.min.js"></script>
+    <script src="assets/default/docs.min.js"></script>
+    <!-- IE10 viewport hack for Surface/desktop Windows 8 bug -->
+    <script src="assets/default/ie10-viewport-bug-workaround.js"></script>
+<div id="global-zeroclipboard-html-bridge" class="global-zeroclipboard-container" title="" style="position: absolute; left: 0px; top: -9999px; width: 15px; height: 15px; z-index: 999999999;" data-original-title="Copy to clipboard">      <object classid="clsid:d27cdb6e-ae6d-11cf-96b8-444553540000" id="global-zeroclipboard-flash-bridge" width="100%" height="100%">         <param name="movie" value="/assets/flash/ZeroClipboard.swf?noCache=1461049018726">         <param name="allowScriptAccess" value="sameDomain">         <param name="scale" value="exactfit">         <param name="loop" value="false">         <param name="menu" value="false">         <param name="quality" value="best">         <param name="bgcolor" value="#ffffff">         <param name="wmode" value="transparent">         <param name="flashvars" value="trustedOrigins=getbootstrap.com%2C%2F%2Fgetbootstrap.com%2Chttp%3A%2F%2Fgetbootstrap.com">         <embed src="/assets/flash/ZeroClipboard.swf?noCache=1461049018726" loop="false" menu="false" quality="best" bgcolor="#ffffff" width="100%" height="100%" name="global-zeroclipboard-flash-bridge" allowscriptaccess="sameDomain" allowfullscreen="false" type="application/x-shockwave-flash" wmode="transparent" pluginspage="http://www.macromedia.com/go/getflashplayer" flashvars="trustedOrigins=getbootstrap.com%2C%2F%2Fgetbootstrap.com%2Chttp%3A%2F%2Fgetbootstrap.com" scale="exactfit">                </object></div><svg xmlns="http://www.w3.org/2000/svg" width="1140" height="500" viewBox="0 0 1140 500" preserveAspectRatio="none" style="display: none; visibility: hidden; position: absolute; top: -100%; left: -100%;"><defs><style type="text/css"></style></defs><text x="0" y="57" style="font-weight:bold;font-size:57pt;font-family:Arial, Helvetica, Open Sans, sans-serif">Thirdslide</text></svg><form id="gclp-frame-form" target="gclp-frame" method="post" style="display: none;"></form></body></html>
